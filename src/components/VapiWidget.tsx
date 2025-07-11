@@ -25,7 +25,20 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
   const [transcription, setTranscription] = useState('');
   const [assistantResponse, setAssistantResponse] = useState('');
   const [activeTab, setActiveTab] = useState<'voice' | 'text'>('voice');
+  const [audioSupported, setAudioSupported] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Check audio support
+  const checkAudioSupport = () => {
+    try {
+      const hasMediaDevices = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+      const hasAudioContext = !!(window.AudioContext || (window as any).webkitAudioContext);
+      return hasMediaDevices && hasAudioContext;
+    } catch (error) {
+      console.warn('Audio support check failed:', error);
+      return false;
+    }
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -36,6 +49,20 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
   }, [voiceMessages, textMessages]);
 
   useEffect(() => {
+    // Check audio support on component mount
+    setAudioSupported(checkAudioSupport());
+
+    // Filter out audio processor warnings
+    const originalConsoleWarn = console.warn;
+    console.warn = (...args) => {
+      const message = args.join(' ');
+      if (!message.includes('audio processor') && 
+          !message.includes('Ignoring settings for browser') &&
+          !message.includes('platform-unsupported input processor')) {
+        originalConsoleWarn.apply(console, args);
+      }
+    };
+
     const vapiInstance = new Vapi(apiKey);
     setVapi(vapiInstance);
 
@@ -87,16 +114,40 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
     
     vapiInstance.on('error', (error) => {
       console.error('Vapi error:', error);
+      // Filter out audio processor warnings which are harmless
+      if (!error.message?.includes('audio processor') && !error.message?.includes('Ignoring settings')) {
+        console.error('Vapi error:', error);
+      }
     });
     
     return () => {
       vapiInstance?.stop();
+      // Restore original console.warn
+      console.warn = originalConsoleWarn;
     };
   }, [apiKey]);
 
-  const startCall = () => {
-    if (vapi) {
+  const startCall = async () => {
+    if (!vapi) return;
+    
+    try {
+      // Request microphone permission first
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        await navigator.mediaDevices.getUserMedia({ audio: true });
+      }
+      
       vapi.start(assistantId);
+    } catch (error) {
+      console.error('Failed to start voice chat:', error);
+      // Add user message about the error
+      const errorMessage: Message = {
+        id: Date.now().toString() + '_error',
+        text: 'Failed to start voice chat. Please check microphone permissions and try again.',
+        sender: 'assistant',
+        timestamp: new Date(),
+        type: 'voice'
+      };
+      setVoiceMessages(prev => [...prev, errorMessage]);
     }
   };
 
@@ -303,6 +354,17 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
       {/* Voice Chat Controls */}
       {activeTab === 'voice' && (
         <div className="p-4 border-t border-gray-200">
+          {!audioSupported && (
+            <div className="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <div className="flex items-center space-x-2 text-yellow-800">
+                <span>⚠️</span>
+                <span className="text-sm">
+                  Audio may not be fully supported in this browser. Some features might be limited.
+                </span>
+              </div>
+            </div>
+          )}
+          
           {!isConnected ? (
             <button
               onClick={startCall}
