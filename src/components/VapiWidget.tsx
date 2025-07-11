@@ -19,7 +19,8 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
   const [vapi, setVapi] = useState<Vapi | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [voiceMessages, setVoiceMessages] = useState<Message[]>([]);
+  const [textMessages, setTextMessages] = useState<Message[]>([]);
   const [currentMessage, setCurrentMessage] = useState('');
   const [transcription, setTranscription] = useState('');
   const [assistantResponse, setAssistantResponse] = useState('');
@@ -32,7 +33,7 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [voiceMessages, textMessages]);
 
   useEffect(() => {
     const vapiInstance = new Vapi(apiKey);
@@ -68,7 +69,7 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
             timestamp: new Date(),
             type: 'voice'
           };
-          setMessages(prev => [...prev, userMessage]);
+          setVoiceMessages(prev => [...prev, userMessage]);
         }
       } else if (message.type === 'transcript' && message.role === 'assistant') {
         if (message.transcript) {
@@ -79,7 +80,7 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
             timestamp: new Date(),
             type: 'voice'
           };
-          setMessages(prev => [...prev, assistantMessage]);
+          setVoiceMessages(prev => [...prev, assistantMessage]);
         }
       }
     });
@@ -116,7 +117,7 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
       type: 'text'
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    setTextMessages(prev => [...prev, userMessage]);
     setCurrentMessage('');
 
     // Simulate assistant response (replace with actual API call)
@@ -137,7 +138,7 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
         type: 'text'
       };
       
-      setMessages(prev => [...prev, assistantMessage]);
+      setTextMessages(prev => [...prev, assistantMessage]);
     } catch (error) {
       console.error('Error sending message:', error);
       const errorMessage: Message = {
@@ -147,7 +148,7 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
         timestamp: new Date(),
         type: 'text'
       };
-      setMessages(prev => [...prev, errorMessage]);
+      setTextMessages(prev => [...prev, errorMessage]);
     }
   };
 
@@ -158,67 +159,123 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
     }
   };
 
+  const clearCurrentConversation = () => {
+    if (activeTab === 'voice') {
+      setVoiceMessages([]);
+    } else {
+      setTextMessages([]);
+    }
+  };
+
   return (
-    <div className="flex flex-col h-96 max-w-md mx-auto bg-white rounded-lg shadow-lg border border-gray-200">
+    <div className="flex flex-col h-96 max-w-lg mx-auto bg-white rounded-lg shadow-lg border border-gray-200">
       {/* Tab Navigation */}
       <div className="flex border-b border-gray-200">
         <button
           onClick={() => setActiveTab('voice')}
-          className={`flex-1 py-3 px-4 text-sm font-medium ${
+          className={`flex-1 py-3 px-4 text-sm font-medium relative ${
             activeTab === 'voice'
               ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
               : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
           }`}
         >
-          🎤 Voice Chat
+          <div className="flex items-center justify-center space-x-2">
+            <span>🎤 Voice Chat</span>
+            {voiceMessages.length > 0 && (
+              <span className="bg-blue-500 text-white text-xs rounded-full px-2 py-1 min-w-[20px] h-5 flex items-center justify-center">
+                {voiceMessages.length}
+              </span>
+            )}
+          </div>
         </button>
         <button
           onClick={() => setActiveTab('text')}
-          className={`flex-1 py-3 px-4 text-sm font-medium ${
+          className={`flex-1 py-3 px-4 text-sm font-medium relative ${
             activeTab === 'text'
               ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
               : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
           }`}
         >
-          💬 Text Chat
+          <div className="flex items-center justify-center space-x-2">
+            <span>💬 Text Chat</span>
+            {textMessages.length > 0 && (
+              <span className="bg-green-500 text-white text-xs rounded-full px-2 py-1 min-w-[20px] h-5 flex items-center justify-center">
+                {textMessages.length}
+              </span>
+            )}
+          </div>
         </button>
       </div>
 
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        {messages.length === 0 ? (
-          <div className="text-center text-gray-500 mt-8">
-            {activeTab === 'voice' ? 'Start a voice conversation!' : 'Send a message to get started!'}
-          </div>
-        ) : (
-          messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              <div
-                className={`max-w-xs px-3 py-2 rounded-lg ${
-                  message.sender === 'user'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 text-gray-800'
-                }`}
-              >
-                <p className="text-sm">{message.text}</p>
-                <div className="flex items-center justify-between mt-1">
-                  <span className="text-xs opacity-75">
-                    {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                  <span className="text-xs opacity-75">
-                    {message.type === 'voice' ? '🎤' : '💬'}
-                  </span>
+        {/* Header with conversation info and clear button */}
+        {(() => {
+          const currentMessages = activeTab === 'voice' ? voiceMessages : textMessages;
+          const conversationType = activeTab === 'voice' ? 'Voice Conversation' : 'Text Conversation';
+          
+          return (
+            <>
+              {currentMessages.length > 0 && (
+                <div className="flex items-center justify-between pb-2 border-b border-gray-100 mb-4">
+                  <div className="text-sm font-medium text-gray-600">
+                    {conversationType} ({currentMessages.length} messages)
+                  </div>
+                  <button
+                    onClick={clearCurrentConversation}
+                    className="text-xs text-red-500 hover:text-red-700 px-2 py-1 rounded hover:bg-red-50"
+                  >
+                    Clear
+                  </button>
                 </div>
-              </div>
-            </div>
-          ))
-        )}
+              )}
+              
+              {currentMessages.length === 0 ? (
+                <div className="text-center text-gray-500 mt-8">
+                  <div className="mb-2 text-2xl">
+                    {activeTab === 'voice' ? '🎤' : '💬'}
+                  </div>
+                  <p className="font-medium mb-1">
+                    {activeTab === 'voice' ? 'Voice Chat' : 'Text Chat'}
+                  </p>
+                  <p className="text-sm">
+                    {activeTab === 'voice' 
+                      ? 'Start a voice conversation with real-time transcription!'
+                      : 'Send a text message to get started!'}
+                  </p>
+                </div>
+              ) : (
+                currentMessages.map((message) => (
+                  <div
+                    key={message.id}
+                    className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div
+                      className={`max-w-xs px-3 py-2 rounded-lg ${
+                        message.sender === 'user'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-200 text-gray-800'
+                      }`}
+                    >
+                      <p className="text-sm">{message.text}</p>
+                      <div className="flex items-center justify-between mt-1">
+                        <span className="text-xs opacity-75">
+                          {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        <span className="text-xs opacity-75">
+                          {message.type === 'voice' ? '🎤' : '💬'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </>
+          );
+        })()}
         
-        {/* Live transcription display */}
-        {transcription && (
+        {/* Live transcription display - only show in voice tab */}
+        {activeTab === 'voice' && transcription && (
           <div className="flex justify-end">
             <div className="max-w-xs px-3 py-2 rounded-lg bg-blue-100 text-blue-800 border border-blue-200">
               <p className="text-sm italic">{transcription}</p>
@@ -227,8 +284,8 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
           </div>
         )}
         
-        {/* Assistant thinking indicator */}
-        {assistantResponse && (
+        {/* Assistant thinking indicator - only show in text tab */}
+        {activeTab === 'text' && assistantResponse && (
           <div className="flex justify-start">
             <div className="max-w-xs px-3 py-2 rounded-lg bg-gray-100 text-gray-600">
               <div className="flex items-center space-x-1">
