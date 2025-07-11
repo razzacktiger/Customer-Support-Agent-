@@ -219,7 +219,7 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
   };
 
   return (
-    <div className="flex flex-col h-96 max-w-lg mx-auto bg-white rounded-lg shadow-lg border border-gray-200">
+    <div className="flex flex-col h-[500px] max-w-4xl mx-auto bg-white rounded-lg shadow-lg border border-gray-200">
       {/* Tab Navigation */}
       <div className="flex border-b border-gray-200">
         <button
