@@ -90,7 +90,7 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
       if (message.type === 'transcript' && message.role === 'user') {
         if (message.transcript) {
           const userMessage: Message = {
-            id: Date.now().toString(),
+            id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
             text: message.transcript,
             sender: 'user',
             timestamp: new Date(),
@@ -101,7 +101,7 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
       } else if (message.type === 'transcript' && message.role === 'assistant') {
         if (message.transcript) {
           const assistantMessage: Message = {
-            id: Date.now().toString() + '_assistant',
+            id: `assistant_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
             text: message.transcript,
             sender: 'assistant',
             timestamp: new Date(),
@@ -141,7 +141,7 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
       console.error('Failed to start voice chat:', error);
       // Add user message about the error
       const errorMessage: Message = {
-        id: Date.now().toString() + '_error',
+        id: `error_voice_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         text: 'Failed to start voice chat. Please check microphone permissions and try again.',
         sender: 'assistant',
         timestamp: new Date(),
@@ -161,7 +161,7 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
     if (!currentMessage.trim()) return;
 
     const userMessage: Message = {
-      id: Date.now().toString(),
+      id: `text_user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       text: currentMessage,
       sender: 'user',
       timestamp: new Date(),
@@ -182,7 +182,7 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
       const data = await response.json();
       
       const assistantMessage: Message = {
-        id: Date.now().toString() + '_assistant',
+        id: `text_assistant_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         text: data.response || 'I apologize, but I encountered an error processing your message.',
         sender: 'assistant',
         timestamp: new Date(),
@@ -193,7 +193,7 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
     } catch (error) {
       console.error('Error sending message:', error);
       const errorMessage: Message = {
-        id: Date.now().toString() + '_error',
+        id: `error_text_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         text: 'Sorry, I encountered an error. Please try again.',
         sender: 'assistant',
         timestamp: new Date(),
