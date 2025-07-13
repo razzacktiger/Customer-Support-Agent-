@@ -1,6 +1,65 @@
+"use client";
+import { useState, useEffect } from 'react';
 import VapiWidget from "../components/VapiWidget";
 
+interface Config {
+  vapiApiKey: string;
+  vapiAssistantId: string;
+}
+
 export default function Home() {
+  const [config, setConfig] = useState<Config | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const response = await fetch('/api/config');
+        if (!response.ok) {
+          throw new Error('Failed to load configuration');
+        }
+        const configData = await response.json();
+        setConfig(configData);
+      } catch (err) {
+        console.error('Error loading config:', err);
+        setError('Failed to load application configuration');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchConfig();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !config) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center bg-white rounded-lg shadow-md p-8 max-w-md">
+          <div className="text-red-500 text-5xl mb-4">⚠️</div>
+          <h2 className="text-xl font-semibold text-gray-800 mb-2">Service Unavailable</h2>
+          <p className="text-gray-600">{error || 'Unable to load the application'}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="mt-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8">
       <div className="max-w-4xl mx-auto px-4">
@@ -11,8 +70,8 @@ export default function Home() {
         
         <div className="flex justify-center">
           <VapiWidget
-            apiKey={process.env.NEXT_PUBLIC_VAPI_API_KEY!}
-            assistantId={process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID!}
+            apiKey={config.vapiApiKey}
+            assistantId={config.vapiAssistantId}
           />
         </div>
         

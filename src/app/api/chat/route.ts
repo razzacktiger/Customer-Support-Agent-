@@ -1,9 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { getServerConfig } from '../../../config/security';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Initialize OpenAI with server-side config
+const getOpenAIClient = () => {
+  const config = getServerConfig();
+  if (!config.openaiApiKey) {
+    throw new Error('OpenAI API key not configured');
+  }
+  return new OpenAI({
+    apiKey: config.openaiApiKey,
+  });
+};
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,6 +20,9 @@ export async function POST(req: NextRequest) {
     if (!message) {
       return NextResponse.json({ error: 'Message is required' }, { status: 400 });
     }
+
+    // Get OpenAI client with secure configuration
+    const openai = getOpenAIClient();
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-3.5-turbo',
