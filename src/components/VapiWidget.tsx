@@ -40,6 +40,28 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
     }
   };
 
+  // Text correction function for common transcription errors
+  const correctTranscription = (text: string): string => {
+    const corrections: { [key: string]: string } = {
+      'Avon': 'Aven',
+      'avon': 'Aven',
+      'AVON': 'Aven',
+      // Add more common corrections as needed
+      'there.': 'there',
+      'support.': 'support',
+    };
+
+    let correctedText = text;
+    
+    // Apply word-level corrections
+    Object.entries(corrections).forEach(([wrong, correct]) => {
+      const regex = new RegExp(`\\b${wrong}\\b`, 'gi');
+      correctedText = correctedText.replace(regex, correct);
+    });
+
+    return correctedText;
+  };
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -89,9 +111,10 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
     vapiInstance.on('message', (message: any) => {
       if (message.type === 'transcript' && message.role === 'user') {
         if (message.transcript) {
+          const correctedText = correctTranscription(message.transcript);
           const userMessage: Message = {
             id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-            text: message.transcript,
+            text: correctedText,
             sender: 'user',
             timestamp: new Date(),
             type: 'voice'
@@ -100,9 +123,10 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
         }
       } else if (message.type === 'transcript' && message.role === 'assistant') {
         if (message.transcript) {
+          const correctedText = correctTranscription(message.transcript);
           const assistantMessage: Message = {
             id: `assistant_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-            text: message.transcript,
+            text: correctedText,
             sender: 'assistant',
             timestamp: new Date(),
             type: 'voice'
@@ -418,4 +442,4 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
   );
 };
 
-export default VapiWidget; 
+export default VapiWidget;
