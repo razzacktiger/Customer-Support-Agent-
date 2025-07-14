@@ -26,6 +26,7 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
   const [assistantResponse, setAssistantResponse] = useState('');
   const [activeTab, setActiveTab] = useState<'voice' | 'text'>('voice');
   const [audioSupported, setAudioSupported] = useState(true);
+  const [vapiError, setVapiError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Check audio support
@@ -140,7 +141,7 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
       console.error('Vapi error:', error);
       // Filter out audio processor warnings which are harmless
       if (!error.message?.includes('audio processor') && !error.message?.includes('Ignoring settings')) {
-        console.error('Vapi error:', error);
+        setVapiError('Voice assistant is currently unavailable. Please use text chat below.');
       }
     });
     
@@ -163,6 +164,7 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
       vapi.start(assistantId);
     } catch (error) {
       console.error('Failed to start voice chat:', error);
+      setVapiError('Voice assistant is currently unavailable. Please use text chat below.');
       // Add user message about the error
       const errorMessage: Message = {
         id: `error_voice_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -244,6 +246,13 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
 
   return (
     <div className="flex flex-col h-[500px] max-w-4xl mx-auto bg-white rounded-lg shadow-lg border border-gray-200">
+      {/* Fallback error message for Vapi */}
+      {vapiError && (
+        <div className="bg-red-100 border border-red-300 text-red-800 rounded-lg p-4 m-4 text-center">
+          <div className="font-semibold mb-1">{vapiError}</div>
+          <div className="text-sm">You can continue the conversation using text chat below.</div>
+        </div>
+      )}
       {/* Tab Navigation */}
       <div className="flex border-b border-gray-200">
         <button
