@@ -211,6 +211,11 @@ Response: {
 }
 ```
 
+## 👥 Meet the Developers
+
+- **[Rayan Roshan](https://www.linkedin.com/in/rayan-roshan/)**
+- **[Haroon Razzack](https://www.linkedin.com/in/haroonrazzack/)**
+
 ## 🤝 Contributing
 
 1. Fork the repository
