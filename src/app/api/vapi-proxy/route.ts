@@ -1,29 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Pinecone } from "@pinecone-database/pinecone";
 import { OpenAIEmbeddings } from "@langchain/openai";
+import { env } from "@/config/env";
 
 const pinecone = new Pinecone({
-  apiKey: process.env.PINECONE_API_KEY!,
+  apiKey: env.PINECONE_API_KEY,
 });
 
 const embeddings = new OpenAIEmbeddings({
-  openAIApiKey: process.env.OPENAI_API_KEY!,
+  openAIApiKey: env.OPENAI_API_KEY,
   modelName: "text-embedding-3-small",
 });
 
 export async function POST(req: NextRequest) {
   try {
     const { action, transcript } = await req.json();
-    const apiKey = process.env.VAPI_API_KEY;
-    const assistantId = process.env.VAPI_ASSISTANT_ID;
+    const apiKey = env.VAPI_API_KEY;
+    const assistantId = env.VAPI_ASSISTANT_ID;
 
     // If this is a transcript from voice, use RAG to get context
     if (transcript) {
       console.log("🎤 Processing voice transcript:", transcript);
 
       // Search knowledge base for relevant context
-      const indexName = process.env.PINECONE_INDEX_NAME || "aven-support-index";
-      const index = pinecone.index(indexName);
+      const index = pinecone.index(env.PINECONE_INDEX_NAME);
 
       const questionEmbedding = await embeddings.embedQuery(transcript);
 

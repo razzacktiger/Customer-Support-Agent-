@@ -2,19 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { Pinecone } from "@pinecone-database/pinecone";
 import { OpenAIEmbeddings } from "@langchain/openai";
 import { OpenAI } from "openai";
+import { env } from "@/config/env";
 
-// Initialize clients
+// Initialize clients using validated config
 const pinecone = new Pinecone({
-  apiKey: process.env.PINECONE_API_KEY!,
+  apiKey: env.PINECONE_API_KEY,
 });
 
 const embeddings = new OpenAIEmbeddings({
-  openAIApiKey: process.env.OPENAI_API_KEY!,
+  openAIApiKey: env.OPENAI_API_KEY,
   modelName: "text-embedding-3-small",
 });
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY!,
+  apiKey: env.OPENAI_API_KEY,
 });
 
 export async function POST(request: NextRequest) {
@@ -32,8 +33,7 @@ export async function POST(request: NextRequest) {
 
     // Step 1: Search Pinecone for relevant Aven knowledge
     console.log("🔍 Searching knowledge base...");
-    const indexName = process.env.PINECONE_INDEX_NAME || "aven-support-index";
-    const index = pinecone.index(indexName);
+    const index = pinecone.index(env.PINECONE_INDEX_NAME);
 
     // Convert question to embeddings
     const questionEmbedding = await embeddings.embedQuery(message);

@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { Pinecone } from "@pinecone-database/pinecone";
 import { OpenAIEmbeddings } from "@langchain/openai";
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
+import { env } from "@/config/env";
 
 const pinecone = new Pinecone({
-  apiKey: process.env.PINECONE_API_KEY!,
+  apiKey: env.PINECONE_API_KEY,
 });
 
 const embeddings = new OpenAIEmbeddings({
-  openAIApiKey: process.env.OPENAI_API_KEY!,
+  openAIApiKey: env.OPENAI_API_KEY,
   modelName: "text-embedding-3-small",
 });
 
@@ -25,7 +26,7 @@ export async function POST(request: NextRequest) {
 
     console.log(`📄 Processing ${documents.length} documents...`);
 
-    const indexName = process.env.PINECONE_INDEX_NAME || "aven-support-index";
+    const indexName = env.PINECONE_INDEX_NAME;
     const index = pinecone.index(indexName);
 
     // Text splitter for large documents
@@ -79,8 +80,7 @@ export async function POST(request: NextRequest) {
       chunksCreated: allChunks.length,
       documentsProcessed: documents.length,
     });
-  } 
-  catch (error) {
+  } catch (error) {
     console.error("❌ Data ingestion failed:", error);
     return NextResponse.json(
       {
