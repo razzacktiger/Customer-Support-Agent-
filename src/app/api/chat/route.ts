@@ -1,3 +1,4 @@
+
 import { NextRequest, NextResponse } from "next/server";
 import { Pinecone } from "@pinecone-database/pinecone";
 import { OpenAIEmbeddings } from "@langchain/openai";
@@ -28,6 +29,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
 
     console.log("💬 User question:", message);
 
