@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect, useRef } from 'react';
 import Vapi from '@vapi-ai/web';
+import { Logger } from '@/utils/logger';
 
 interface Message {
   id: string;
@@ -14,6 +15,8 @@ interface VapiWidgetProps {
   apiKey: string;
   assistantId: string;
 }
+
+const logger = new Logger('VapiWidget');
 
 const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
   const [vapi, setVapi] = useState<Vapi | null>(null);
@@ -93,7 +96,8 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
       setIsConnected(true);
     });
     
-    vapiInstance.on('call-end', () => {
+    vapiInstance.on('call-end', (...args) => {
+      logger.info('Call ended. Args:', args);
       setIsConnected(false);
       setIsSpeaking(false);
       setTranscription('');
@@ -138,7 +142,7 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
     });
     
     vapiInstance.on('error', (error) => {
-      console.error('Vapi error:', error);
+      logger.error('Vapi error', error, { errorString: JSON.stringify(error, null, 2) });
       // Filter out audio processor warnings which are harmless
       if (!error.message?.includes('audio processor') && !error.message?.includes('Ignoring settings')) {
         setVapiError('Voice assistant is currently unavailable. Please use text chat below.');

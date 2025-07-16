@@ -11,7 +11,7 @@ const pinecone = new Pinecone({
 // Create OpenAI embeddings (this converts text to numbers)
 const embeddings = new OpenAIEmbeddings({
   openAIApiKey: env.OPENAI_API_KEY,
-  modelName: "text-embedding-3-small", // Cheaper/faster model
+  modelName: "text-embedding-3-small",
 });
 
 export async function GET(request: NextRequest) {
