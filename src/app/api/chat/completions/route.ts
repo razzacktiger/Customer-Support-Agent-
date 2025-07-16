@@ -1,27 +1,21 @@
-import OpenAI from "openai";
-import { env } from "process";
 import { NextRequest, NextResponse } from "next/server";
+import OpenAI from "openai";
+import {env} from "@/config/env"
 
-const gemini = new OpenAI({ 
-    apiKey: env.GOOGLE_API_KEY,
-    baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
- });
+const gemini = new OpenAI({ apiKey: env.GOOGLE_API_KEY, 
+    baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/" });
 
-// Simple logger utility
-function logger(...args: any[]) {
-  console.log('[API/chat/completions]', ...args);
-}
-
-export default async (req: NextRequest) => {
-  logger('Received request:', req.method);
-  if (req.method !== "POST") {
-    logger('Method not allowed:', req.method);
-    return NextResponse.json({ message: "Method Not Allowed" }, { status: 405 });
-  }
-
+export async function POST(req: NextRequest) {
+  let body;
   try {
-    const body = await req.json();
-    logger('Request body:', body);
+    body = await req.json();
+  } catch (e) {
+    return new Response(JSON.stringify({ error: "Invalid or missing JSON in request body" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+  try {
     const {
       model,
       messages,
@@ -33,72 +27,80 @@ export default async (req: NextRequest) => {
     } = body;
 
     const lastMessage = messages?.[messages.length - 1];
-    logger('Last message:', lastMessage);
+
     const prompt = await gemini.chat.completions.create({
       model: "gemini-2.0-flash-lite",
       messages: [
         {
           role: "user",
           content: `
-            Create a prompt which can act as a prompt templete where I put the original prompt and it can modify it according to my intentions so that the final modified prompt is more detailed.You can expand certain terms or keywords.
+            Create a prompt which can act as a prompt templete where I put the original prompt and it can modify it according to my intentions so that the final modified prompt is more detailed. You can expand certain terms or keywords.
             ----------
             PROMPT: ${lastMessage.content}.
-            MODIFIED PROMPT: `,
-        },
+            MODIFIED PROMPT: `
+        }
       ],
       max_tokens: 500,
       temperature: 0.7,
     });
-    logger('Prompt completion:', prompt);
 
     const modifiedMessage = [
       ...messages.slice(0, messages.length - 1),
-      { ...lastMessage, content: prompt.choices[0].message.content},
+      { ...lastMessage, content: prompt.choices[0].message.content },
     ];
-    logger('Modified message:', modifiedMessage);
+
+    if (!Array.isArray(modifiedMessage) || !modifiedMessage.every(m => m.role && m.content)) {
+      return NextResponse.json({ error: "Invalid messages format" }, { status: 400 });
+    }
 
     if (stream) {
-      logger('Streaming response enabled');
-      const completionStream = await gemini.chat.completions.create({
-        model: model || "gemini-2.0-flash-lite",
-        ...restParams,
+      const payload = {
+        model: "gemini-2.0-flash-lite",
         messages: modifiedMessage,
         max_tokens: max_tokens || 150,
         temperature: temperature || 0.7,
         stream: true,
-      } as OpenAI.Chat.ChatCompletionCreateParamsStreaming);
+      };
+      console.log("Gemini streaming payload:", payload);
+      const completionStream = await gemini.chat.completions.create(payload as OpenAI.Chat.ChatCompletionCreateParamsStreaming);
+
       const encoder = new TextEncoder();
-      const streamResponse = new ReadableStream({
+      const readableStream = new ReadableStream({
         async start(controller) {
-          for await (const data of completionStream) {
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+          try {
+            for await (const chunk of completionStream) {
+              const data = `data: ${JSON.stringify(chunk)}\n\n`;
+              controller.enqueue(encoder.encode(data));
+            }
+          } catch (error) {
+            controller.error(error);
+          } finally {
+            controller.close();
           }
-          controller.close();
         }
       });
-      logger('Returning stream response');
-      return new NextResponse(streamResponse, {
+
+      return new Response(readableStream, {
         headers: {
-          "Content-Type": "text/event-stream",
+          "Content-Type": "text/plain",
           "Cache-Control": "no-cache",
           "Connection": "keep-alive",
-        }
+        },
       });
     } else {
-      logger('Non-streaming response');
-      const completion = await gemini.chat.completions.create({
-        model: model || "gpt-3.5-turbo",
-        ...restParams,
+      const payload = {
+        model: "gemini-2.0-flash-lite",
         messages: modifiedMessage,
         max_tokens: max_tokens || 150,
         temperature: temperature || 0.7,
         stream: false,
-      });
-      logger('Completion result:', completion);
-      return NextResponse.json(completion, { status: 200 });
+      };
+      console.log("Gemini non-streaming payload:", payload);
+      const completion = await gemini.chat.completions.create(payload);
+      return NextResponse.json(completion);
     }
   } catch (e) {
-    logger('Error occurred:', e);
-    return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 });
+    console.log(e);
+    return NextResponse.json({ error: e }, { status: 500 });
   }
-};
+}
