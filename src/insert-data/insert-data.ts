@@ -1,0 +1,1 @@
+import firecrawlApp from "@mendable/firecrawl-js"

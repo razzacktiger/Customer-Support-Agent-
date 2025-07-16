@@ -5,10 +5,11 @@ An AI-powered customer support application with voice and text chat capabilities
 ## 🌟 Features
 
 - **🎤 Voice Chat**: Real-time voice conversations with AI assistant using Vapi
-- **💬 Text Chat**: Traditional text-based messaging with OpenAI integration
+- **💬 Text Chat**: Traditional text-based messaging with OpenAI and Google Gemini integration
 - **🔄 Dual Interface**: Seamless switching between voice and text modes
 - **📝 Live Transcription**: Real-time speech-to-text with automatic corrections
 - **🔒 Secure API Management**: Server-side API key handling for security
+- - **🔎 Context-Aware Answers**: Uses Pinecone vector search and Gemini embeddings for more relevant responses
 - **📱 Responsive Design**: Modern UI that works on desktop and mobile
 - **⚡ Real-time Updates**: Live conversation history and status indicators
 
@@ -18,7 +19,7 @@ An AI-powered customer support application with voice and text chat capabilities
 
 - Node.js 18+ installed
 - npm or yarn package manager
-- API keys for the services you want to use
+- API keys for the services you want to use (OpenAI, Google Gemini, Pinecone, etc.)
 
 ### 1. Clone the Repository
 
@@ -52,6 +53,7 @@ NEXT_PUBLIC_VAPI_ASSISTANT_ID=your_vapi_assistant_id_here
 OPENAI_API_KEY=your_openai_api_key_here
 PINECONE_API_KEY=your_pinecone_api_key_here
 EXA_API_KEY=your_exa_api_key_here
+GOOGLE_API_KEY=your_google_generative_ai_key_here
 ```
 
 ### 4. Get Your API Keys
@@ -66,8 +68,17 @@ EXA_API_KEY=your_exa_api_key_here
 2. Create an account and generate an API key
 3. Ensure you have credits for API usage
 
-#### Optional: Pinecone & Exa
-- [Pinecone](https://pinecone.io) - Vector database for advanced search
+#### Google Generative AI (Gemini)
+1. Visit [Google AI Studio](https://aistudio.google.com/app/apikey)
+2. Create an API key for Gemini
+3. Add it to your `.env` as `GOOGLE_API_KEY`
+
+#### Pinecone (Vector Search)
+1. Visit [Pinecone](https://pinecone.io)
+2. Create an account and get your API key
+3. Add it to your `.env` as `PINECONE_API_KEY`
+
+#### Optional: Exa
 - [Exa](https://exa.ai) - Web search capabilities
 
 ### 5. Run the Application
@@ -109,6 +120,7 @@ src/
 | `OPENAI_API_KEY` | Yes | OpenAI API key for text chat |
 | `PINECONE_API_KEY` | No | Pinecone vector database key |
 | `EXA_API_KEY` | No | Exa search API key |
+| `GOOGLE_API_KEY` | Yes | Google Generative AI (Gemini) API key |
 
 ### Security Notes
 
@@ -137,6 +149,22 @@ src/
 - **Auto-correction**: Common transcription errors are automatically fixed
 - **Status Indicators**: Visual feedback for connection and speaking states
 - **Responsive Design**: Works seamlessly on all devices
+- **Context-Aware Answers**: Uses Pinecone and Gemini to provide answers based on your own data and context
+
+## 🧠 Gemini & Pinecone Integration
+
+This project uses Google Generative AI (Gemini) for advanced embeddings and Pinecone for vector search. This enables context-aware answers based on your own data.
+
+**How it works:**
+- User messages are embedded using Gemini
+- Embeddings are used to query Pinecone for relevant context
+- The context is included in the prompt to Gemini for a more accurate answer
+
+**Environment variables required:**
+- `GOOGLE_API_KEY` (Gemini)
+- `PINECONE_API_KEY` (Pinecone)
+
+See the `/src/app/api/chat/completions/route.ts` for implementation details.
 
 ## 🚀 Deployment
 

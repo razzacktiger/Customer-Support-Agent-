@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import {env} from "@/config/env"
+import { Pinecone } from "@pinecone-database/pinecone";
+import {GoogleGenerativeAI} from "@google/generative-ai";
+
+const pinecone = new Pinecone({apiKey: env.PINECONE_API_KEY});
+const namespace = pinecone.index("company-data").namespace("aven")
+
+const ai = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY!)
+const embeddingmodel = ai.getGenerativeModel({model: "gemini-embedding-001"})
 
 const gemini = new OpenAI({ apiKey: env.GOOGLE_API_KEY, 
     baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/" });
@@ -28,16 +36,27 @@ export async function POST(req: NextRequest) {
 
     const lastMessage = messages?.[messages.length - 1];
 
+    const query = lastMessage.content;
+
+    const embedding = await embeddingmodel.embedContent(query)
+
+    const response = await namespace.query ({
+       vector: embedding.embedding.values,
+       topK: 3,
+       includeMetadata: true,
+    });
+
+    const context = response.matches?.map(match => match.metadata?.chunk_text).join("\n\n");
+
+    const geminiPrompt =  `Answer the question that's given to you based on the following context: ${context}
+    Question: %{query}
+    answer: `;
     const prompt = await gemini.chat.completions.create({
       model: "gemini-2.0-flash-lite",
       messages: [
         {
           role: "user",
-          content: `
-            Create a prompt which can act as a prompt templete where I put the original prompt and it can modify it according to my intentions so that the final modified prompt is more detailed. You can expand certain terms or keywords.
-            ----------
-            PROMPT: ${lastMessage.content}.
-            MODIFIED PROMPT: `
+          content: geminiPrompt,
         }
       ],
       max_tokens: 500,
