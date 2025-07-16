@@ -5,7 +5,7 @@ import { Pinecone } from "@pinecone-database/pinecone";
 import {GoogleGenerativeAI} from "@google/generative-ai";
 
 const pinecone = new Pinecone({apiKey: env.PINECONE_API_KEY});
-const namespace = pinecone.index("company-data").namespace("aven")
+const namespace = pinecone.index("aven-pinecone-2").namespace("aven")
 
 const ai = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY!)
 const embeddingmodel = ai.getGenerativeModel({model: "gemini-embedding-001"})
@@ -46,10 +46,10 @@ export async function POST(req: NextRequest) {
        includeMetadata: true,
     });
 
-    const context = response.matches?.map(match => match.metadata?.chunk_text).join("\n\n");
+    const context = response.matches?.map(match => match.metadata?.chunk_text).join("\n\n") || "";
 
     const geminiPrompt =  `Answer the question that's given to you based on the following context: ${context}
-    Question: %{query}
+    Question: ${query}
     answer: `;
     const prompt = await gemini.chat.completions.create({
       model: "gemini-2.0-flash-lite",
