@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Pinecone } from "@pinecone-database/pinecone";
 import { OpenAIEmbeddings } from "@langchain/openai";
+import { env } from "@/config/env";
 
 // Create Pinecone client
 const pinecone = new Pinecone({
-  apiKey: process.env.PINECONE_API_KEY!,
+  apiKey: env.PINECONE_API_KEY,
 });
 
 // Create OpenAI embeddings (this converts text to numbers)
 const embeddings = new OpenAIEmbeddings({
-  openAIApiKey: process.env.OPENAI_API_KEY!,
+  openAIApiKey: env.OPENAI_API_KEY,
   modelName: "text-embedding-3-small", // Cheaper/faster model
 });
 
@@ -18,8 +19,7 @@ export async function GET(request: NextRequest) {
     console.log("📊 Testing Pinecone vector database...");
 
     // 1. Connect to our index (database)
-    const indexName = process.env.PINECONE_INDEX_NAME || "aven-support-index";
-    const index = pinecone.index(indexName);
+    const index = pinecone.index(env.PINECONE_INDEX_NAME);
 
     // 2. Test text - let's store some simple Aven info
     const testText =
@@ -29,6 +29,7 @@ export async function GET(request: NextRequest) {
     console.log("🔢 Converting text to embeddings...");
     const embedding = await embeddings.embedQuery(testText);
     console.log(`✅ Created embedding with ${embedding.length} dimensions`);
+    `
 
     // 4. Store the text and its numbers in Pinecone
     console.log("💾 Storing in Pinecone...");
@@ -43,11 +44,13 @@ export async function GET(request: NextRequest) {
           type: "company-info",
         },
       },
-    ]);
+    ]); `;
 
     // 5. Test if we can find it by searching
     console.log("🔍 Testing search...");
-    const searchEmbedding = await embeddings.embedQuery("What is Aven?");
+    const searchEmbedding = await embeddings.embedQuery(
+      "Is Aven a HELOC company?"
+    );
     const searchResults = await index.query({
       vector: searchEmbedding,
       topK: 1, // Get 1 best match
@@ -62,7 +65,7 @@ export async function GET(request: NextRequest) {
       message: "Pinecone is working!",
       embedding_size: embedding.length,
       stored_text: testText,
-      search_query: "What is Aven?",
+      search_query: "Is Aven a HELOC company?",
       found_match: foundMatch
         ? {
             score: foundMatch.score,

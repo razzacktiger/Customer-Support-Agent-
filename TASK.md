@@ -13,15 +13,15 @@
 - [x] ✅ Initialize Next.js project with TypeScript
 - [x] ✅ Configure Tailwind CSS
 - [x] ✅ Set up ESLint and Prettier
-- [ ] 🔴 Create environment configuration (.env.example)
-- [ ] 🔴 Set up project folder structure as per PLANNING.md
-- [ ] 🔴 Install core dependencies (LangChain, Pinecone, OpenAI)
-- [ ] 🟡 Configure Vitest for testing
-- [ ] 🟡 Set up CI/CD pipeline (GitHub Actions)
+- [x] 🔴 Create environment configuration (.env.example)
+- [x] 🔴 Set up project folder structure as per PLANNING.md
+- [x] 🔴 Install core dependencies (LangChain, Pinecone, OpenAI)
+- [x] 🟡 Configure Vitest for testing
+- [x] 🟡 Set up CI/CD pipeline (GitHub Actions)
 
 ### 1.2 Data Ingestion & Vector Database 🔴
 
-- [ ] 🔴 Set up Pinecone vector database
+- [x] 🔴 Set up Pinecone vector database
 - [ ] 🔴 Implement Exa API integration for web scraping
 - [ ] 🔴 Create data scraping pipeline for Aven website
   - [ ] Scrape main support page (https://www.aven.com/support)
