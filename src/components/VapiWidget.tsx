@@ -1,13 +1,13 @@
 "use client";
-import React, { useState, useEffect, useRef } from 'react';
-import Vapi from '@vapi-ai/web';
+import React, { useState, useEffect, useRef } from "react";
+import Vapi from "@vapi-ai/web";
 
 interface Message {
   id: string;
   text: string;
-  sender: 'user' | 'assistant';
+  sender: "user" | "assistant";
   timestamp: Date;
-  type: 'text' | 'voice';
+  type: "text" | "voice";
 }
 
 interface VapiWidgetProps {
@@ -21,10 +21,10 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [voiceMessages, setVoiceMessages] = useState<Message[]>([]);
   const [textMessages, setTextMessages] = useState<Message[]>([]);
-  const [currentMessage, setCurrentMessage] = useState('');
-  const [transcription, setTranscription] = useState('');
-  const [assistantResponse, setAssistantResponse] = useState('');
-  const [activeTab, setActiveTab] = useState<'voice' | 'text'>('voice');
+  const [currentMessage, setCurrentMessage] = useState("");
+  const [transcription, setTranscription] = useState("");
+  const [assistantResponse, setAssistantResponse] = useState("");
+  const [activeTab, setActiveTab] = useState<"voice" | "text">("voice");
   const [audioSupported, setAudioSupported] = useState(true);
   const [vapiError, setVapiError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -32,11 +32,15 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
   // Check audio support
   const checkAudioSupport = () => {
     try {
-      const hasMediaDevices = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
-      const hasAudioContext = !!(window.AudioContext || (window as any).webkitAudioContext);
+      const hasMediaDevices = !!(
+        navigator.mediaDevices && navigator.mediaDevices.getUserMedia
+      );
+      const hasAudioContext = !!(
+        window.AudioContext || (window as any).webkitAudioContext
+      );
       return hasMediaDevices && hasAudioContext;
     } catch (error) {
-      console.warn('Audio support check failed:', error);
+      console.warn("Audio support check failed:", error);
       return false;
     }
   };
@@ -44,19 +48,19 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
   // Text correction function for common transcription errors
   const correctTranscription = (text: string): string => {
     const corrections: { [key: string]: string } = {
-      'Avon': 'Aven',
-      'avon': 'Aven',
-      'AVON': 'Aven',
+      Avon: "Aven",
+      avon: "Aven",
+      AVON: "Aven",
       // Add more common corrections as needed
-      'there.': 'there',
-      'support.': 'support',
+      "there.": "there",
+      "support.": "support",
     };
 
     let correctedText = text;
-    
+
     // Apply word-level corrections
     Object.entries(corrections).forEach(([wrong, correct]) => {
-      const regex = new RegExp(`\\b${wrong}\\b`, 'gi');
+      const regex = new RegExp(`\\b${wrong}\\b`, "gi");
       correctedText = correctedText.replace(regex, correct);
     });
 
@@ -64,7 +68,7 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
   };
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   useEffect(() => {
@@ -78,10 +82,12 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
     // Filter out audio processor warnings
     const originalConsoleWarn = console.warn;
     console.warn = (...args) => {
-      const message = args.join(' ');
-      if (!message.includes('audio processor') && 
-          !message.includes('Ignoring settings for browser') &&
-          !message.includes('platform-unsupported input processor')) {
+      const message = args.join(" ");
+      if (
+        !message.includes("audio processor") &&
+        !message.includes("Ignoring settings for browser") &&
+        !message.includes("platform-unsupported input processor")
+      ) {
         originalConsoleWarn.apply(console, args);
       }
     };
@@ -89,62 +95,70 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
     const vapiInstance = new Vapi(apiKey);
     setVapi(vapiInstance);
 
-    vapiInstance.on('call-start', () => {
+    vapiInstance.on("call-start", () => {
       setIsConnected(true);
     });
-    
-    vapiInstance.on('call-end', () => {
+
+    vapiInstance.on("call-end", () => {
       setIsConnected(false);
       setIsSpeaking(false);
-      setTranscription('');
-      setAssistantResponse('');
+      setTranscription("");
+      setAssistantResponse("");
     });
-    
-    vapiInstance.on('speech-start', () => {
+
+    vapiInstance.on("speech-start", () => {
       setIsSpeaking(true);
     });
-    
-    vapiInstance.on('speech-end', () => {
+
+    vapiInstance.on("speech-end", () => {
       setIsSpeaking(false);
     });
 
     // Enhanced transcription handling
-    vapiInstance.on('message', (message: any) => {
-      if (message.type === 'transcript' && message.role === 'user') {
+    vapiInstance.on("message", (message: any) => {
+      if (message.type === "transcript" && message.role === "user") {
         if (message.transcript) {
           const correctedText = correctTranscription(message.transcript);
           const userMessage: Message = {
             id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
             text: correctedText,
-            sender: 'user',
+            sender: "user",
             timestamp: new Date(),
-            type: 'voice'
+            type: "voice",
           };
           setVoiceMessages(prev => [...prev, userMessage]);
         }
-      } else if (message.type === 'transcript' && message.role === 'assistant') {
+      } else if (
+        message.type === "transcript" &&
+        message.role === "assistant"
+      ) {
         if (message.transcript) {
           const correctedText = correctTranscription(message.transcript);
           const assistantMessage: Message = {
             id: `assistant_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
             text: correctedText,
-            sender: 'assistant',
+            sender: "assistant",
             timestamp: new Date(),
-            type: 'voice'
+            type: "voice",
           };
           setVoiceMessages(prev => [...prev, assistantMessage]);
         }
       }
     });
-    
-    vapiInstance.on('error', (error) => {
-      console.error('Vapi error:', error);
+
+    vapiInstance.on("error", error => {
+      console.error("Vapi error:", error);
       // Filter out audio processor warnings which are harmless
-      if (!error.message?.includes('audio processor') && !error.message?.includes('Ignoring settings')) {
-        setVapiError('Voice assistant is currently unavailable. Please use text chat below.');
+      if (
+        !error.message?.includes("audio processor") &&
+        !error.message?.includes("Ignoring settings")
+      ) {
+        setVapiError(
+          "Voice assistant is currently unavailable. Please use text chat below."
+        );
       }
     });
-    
+
     return () => {
       vapiInstance?.stop();
       // Restore original console.warn
@@ -154,24 +168,26 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
 
   const startCall = async () => {
     if (!vapi) return;
-    
+
     try {
       // Request microphone permission first
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
         await navigator.mediaDevices.getUserMedia({ audio: true });
       }
-      
+
       vapi.start(assistantId);
     } catch (error) {
-      console.error('Failed to start voice chat:', error);
-      setVapiError('Voice assistant is currently unavailable. Please use text chat below.');
+      console.error("Failed to start voice chat:", error);
+      setVapiError(
+        "Voice assistant is currently unavailable. Please use text chat below."
+      );
       // Add user message about the error
       const errorMessage: Message = {
         id: `error_voice_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        text: 'Failed to start voice chat. Please check microphone permissions and try again.',
-        sender: 'assistant',
+        text: "Failed to start voice chat. Please check microphone permissions and try again.",
+        sender: "assistant",
         timestamp: new Date(),
-        type: 'voice'
+        type: "voice",
       };
       setVoiceMessages(prev => [...prev, errorMessage]);
     }
@@ -189,55 +205,57 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
     const userMessage: Message = {
       id: `text_user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       text: currentMessage,
-      sender: 'user',
+      sender: "user",
       timestamp: new Date(),
-      type: 'text'
+      type: "text",
     };
 
     setTextMessages(prev => [...prev, userMessage]);
-    setCurrentMessage('');
+    setCurrentMessage("");
 
     // Simulate assistant response (replace with actual API call)
     try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/chat/text", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: currentMessage }),
       });
-      
+
       const data = await response.json();
-      
+
       const assistantMessage: Message = {
         id: `text_assistant_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        text: data.response || 'I apologize, but I encountered an error processing your message.',
-        sender: 'assistant',
+        text:
+          data.response ||
+          "I apologize, but I encountered an error processing your message.",
+        sender: "assistant",
         timestamp: new Date(),
-        type: 'text'
+        type: "text",
       };
-      
+
       setTextMessages(prev => [...prev, assistantMessage]);
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error("Error sending message:", error);
       const errorMessage: Message = {
         id: `error_text_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        text: 'Sorry, I encountered an error. Please try again.',
-        sender: 'assistant',
+        text: "Sorry, I encountered an error. Please try again.",
+        sender: "assistant",
         timestamp: new Date(),
-        type: 'text'
+        type: "text",
       };
       setTextMessages(prev => [...prev, errorMessage]);
     }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       sendTextMessage();
     }
   };
 
   const clearCurrentConversation = () => {
-    if (activeTab === 'voice') {
+    if (activeTab === "voice") {
       setVoiceMessages([]);
     } else {
       setTextMessages([]);
@@ -250,17 +268,19 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
       {vapiError && (
         <div className="bg-red-100 border border-red-300 text-red-800 rounded-lg p-4 m-4 text-center">
           <div className="font-semibold mb-1">{vapiError}</div>
-          <div className="text-sm">You can continue the conversation using text chat below.</div>
+          <div className="text-sm">
+            You can continue the conversation using text chat below.
+          </div>
         </div>
       )}
       {/* Tab Navigation */}
       <div className="flex border-b border-gray-200">
         <button
-          onClick={() => setActiveTab('voice')}
+          onClick={() => setActiveTab("voice")}
           className={`flex-1 py-3 px-4 text-sm font-medium relative ${
-            activeTab === 'voice'
-              ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
-              : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+            activeTab === "voice"
+              ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
+              : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
           }`}
         >
           <div className="flex items-center justify-center space-x-2">
@@ -273,11 +293,11 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
           </div>
         </button>
         <button
-          onClick={() => setActiveTab('text')}
+          onClick={() => setActiveTab("text")}
           className={`flex-1 py-3 px-4 text-sm font-medium relative ${
-            activeTab === 'text'
-              ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
-              : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+            activeTab === "text"
+              ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
+              : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
           }`}
         >
           <div className="flex items-center justify-center space-x-2">
@@ -295,9 +315,11 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {/* Header with conversation info and clear button */}
         {(() => {
-          const currentMessages = activeTab === 'voice' ? voiceMessages : textMessages;
-          const conversationType = activeTab === 'voice' ? 'Voice Conversation' : 'Text Conversation';
-          
+          const currentMessages =
+            activeTab === "voice" ? voiceMessages : textMessages;
+          const conversationType =
+            activeTab === "voice" ? "Voice Conversation" : "Text Conversation";
+
           return (
             <>
               {currentMessages.length > 0 && (
@@ -313,41 +335,44 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
                   </button>
                 </div>
               )}
-              
+
               {currentMessages.length === 0 ? (
                 <div className="text-center text-gray-500 mt-8">
                   <div className="mb-2 text-2xl">
-                    {activeTab === 'voice' ? '🎤' : '💬'}
+                    {activeTab === "voice" ? "🎤" : "💬"}
                   </div>
                   <p className="font-medium mb-1">
-                    {activeTab === 'voice' ? 'Voice Chat' : 'Text Chat'}
+                    {activeTab === "voice" ? "Voice Chat" : "Text Chat"}
                   </p>
                   <p className="text-sm">
-                    {activeTab === 'voice' 
-                      ? 'Start a voice conversation with real-time transcription!'
-                      : 'Send a text message to get started!'}
+                    {activeTab === "voice"
+                      ? "Start a voice conversation with real-time transcription!"
+                      : "Send a text message to get started!"}
                   </p>
                 </div>
               ) : (
-                currentMessages.map((message) => (
+                currentMessages.map(message => (
                   <div
                     key={message.id}
-                    className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                    className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}
                   >
                     <div
                       className={`max-w-xs px-3 py-2 rounded-lg ${
-                        message.sender === 'user'
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-200 text-gray-800'
+                        message.sender === "user"
+                          ? "bg-blue-600 text-white"
+                          : "bg-gray-200 text-gray-800"
                       }`}
                     >
                       <p className="text-sm">{message.text}</p>
                       <div className="flex items-center justify-between mt-1">
                         <span className="text-xs opacity-75">
-                          {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          {message.timestamp.toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
                         </span>
                         <span className="text-xs opacity-75">
-                          {message.type === 'voice' ? '🎤' : '💬'}
+                          {message.type === "voice" ? "🎤" : "💬"}
                         </span>
                       </div>
                     </div>
@@ -357,9 +382,9 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
             </>
           );
         })()}
-        
+
         {/* Live transcription display - only show in voice tab */}
-        {activeTab === 'voice' && transcription && (
+        {activeTab === "voice" && transcription && (
           <div className="flex justify-end">
             <div className="max-w-xs px-3 py-2 rounded-lg bg-blue-100 text-blue-800 border border-blue-200">
               <p className="text-sm italic">{transcription}</p>
@@ -367,37 +392,44 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
             </div>
           </div>
         )}
-        
+
         {/* Assistant thinking indicator - only show in text tab */}
-        {activeTab === 'text' && assistantResponse && (
+        {activeTab === "text" && assistantResponse && (
           <div className="flex justify-start">
             <div className="max-w-xs px-3 py-2 rounded-lg bg-gray-100 text-gray-600">
               <div className="flex items-center space-x-1">
                 <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                <div
+                  className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                  style={{ animationDelay: "0.1s" }}
+                ></div>
+                <div
+                  className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                  style={{ animationDelay: "0.2s" }}
+                ></div>
               </div>
             </div>
           </div>
         )}
-        
+
         <div ref={messagesEndRef} />
       </div>
 
       {/* Voice Chat Controls */}
-      {activeTab === 'voice' && (
+      {activeTab === "voice" && (
         <div className="p-4 border-t border-gray-200">
           {!audioSupported && (
             <div className="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
               <div className="flex items-center space-x-2 text-yellow-800">
                 <span>⚠️</span>
                 <span className="text-sm">
-                  Audio may not be fully supported in this browser. Some features might be limited.
+                  Audio may not be fully supported in this browser. Some
+                  features might be limited.
                 </span>
               </div>
             </div>
           )}
-          
+
           {!isConnected ? (
             <button
               onClick={startCall}
@@ -409,9 +441,11 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
           ) : (
             <div className="space-y-3">
               <div className="flex items-center justify-center space-x-2 text-sm">
-                <div className={`w-3 h-3 rounded-full ${isSpeaking ? 'bg-red-500 animate-pulse' : 'bg-green-500'}`}></div>
+                <div
+                  className={`w-3 h-3 rounded-full ${isSpeaking ? "bg-red-500 animate-pulse" : "bg-green-500"}`}
+                ></div>
                 <span className="text-gray-700">
-                  {isSpeaking ? 'Assistant Speaking...' : 'Listening...'}
+                  {isSpeaking ? "Assistant Speaking..." : "Listening..."}
                 </span>
               </div>
               <button
@@ -426,13 +460,13 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
       )}
 
       {/* Text Chat Input */}
-      {activeTab === 'text' && (
+      {activeTab === "text" && (
         <div className="p-4 border-t border-gray-200">
           <div className="flex space-x-2">
             <input
               type="text"
               value={currentMessage}
-              onChange={(e) => setCurrentMessage(e.target.value)}
+              onChange={e => setCurrentMessage(e.target.value)}
               onKeyPress={handleKeyPress}
               placeholder="Type your message..."
               className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"

@@ -8,6 +8,8 @@ const envSchema = z.object({
   NODE_ENV: z.string(),
   NEXT_PUBLIC_APP_URL: z.string(),
   // API Keys for RAG system
+  FIRECRAWL_API_KEY: z.string().min(1, "Firecrawl API key is required"),
+  GOOGLE_API_KEY: z.string().min(1, "Google API key is required"),
   OPENAI_API_KEY: z.string().min(1, "OpenAI API key is required"),
   PINECONE_API_KEY: z.string().min(1, "Pinecone API key is required"),
   PINECONE_INDEX_NAME: z.string().default("aven-support-index"),
@@ -25,6 +27,8 @@ const validateEnv = () => {
       NODE_ENV: process.env.NODE_ENV,
       NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
       // API Keys
+      FIRECRAWL_API_KEY: process.env.FIRECRAWL_API_KEY,
+      GOOGLE_API_KEY: process.env.GOOGLE_API_KEY,
       OPENAI_API_KEY: process.env.OPENAI_API_KEY,
       PINECONE_API_KEY: process.env.PINECONE_API_KEY,
       PINECONE_INDEX_NAME: process.env.PINECONE_INDEX_NAME,

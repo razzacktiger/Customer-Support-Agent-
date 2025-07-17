@@ -1,7 +1,6 @@
-
 import { NextRequest, NextResponse } from "next/server";
 import { Pinecone } from "@pinecone-database/pinecone";
-import { OpenAIEmbeddings } from "@langchain/openai";
+import { GeminiEmbeddings } from "@/lib/embeddings/gemini-embeddings";
 import { OpenAI } from "openai";
 import { env } from "@/config/env";
 
@@ -10,10 +9,7 @@ const pinecone = new Pinecone({
   apiKey: env.PINECONE_API_KEY,
 });
 
-const embeddings = new OpenAIEmbeddings({
-  openAIApiKey: env.OPENAI_API_KEY,
-  modelName: "text-embedding-3-small",
-});
+const embeddings = new GeminiEmbeddings();
 
 const openai = new OpenAI({
   apiKey: env.OPENAI_API_KEY,
@@ -29,7 +25,6 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-
 
     console.log("💬 User question:", message);
 
@@ -51,8 +46,8 @@ export async function POST(request: NextRequest) {
     const relevantKnowledge =
       searchResults.matches
         ?.filter(match => match.score && match.score > 0.5) // Only good matches
-        ?.map(match => match.metadata?.text)
-        ?.filter(text => text) // Remove empty ones
+        ?.map(match => match.metadata?.content)
+        ?.filter(content => content) // Remove empty ones
         ?.join("\n\n") || "";
 
     console.log(
