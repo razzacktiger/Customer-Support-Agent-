@@ -183,7 +183,7 @@ class PipelineTestSuite {
 
   async testChatAPI() {
     return this.runTest("Chat API", async () => {
-      const response = await fetch(`${this.baseUrl}/api/chat`, {
+      const response = await fetch(`${this.baseUrl}/api/chat/text`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -249,7 +249,7 @@ class PipelineTestSuite {
       const results = [];
 
       for (const query of testQueries) {
-        const response = await fetch(`${this.baseUrl}/api/chat`, {
+        const response = await fetch(`${this.baseUrl}/api/chat/text`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ message: query }),

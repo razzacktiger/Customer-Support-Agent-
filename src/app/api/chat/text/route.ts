@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Pinecone } from "@pinecone-database/pinecone";
 import { GeminiEmbeddings } from "@/lib/embeddings/gemini-embeddings";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 import { env } from "@/config/env";
 
 // Initialize clients using validated config
@@ -11,8 +11,9 @@ const pinecone = new Pinecone({
 
 const embeddings = new GeminiEmbeddings();
 
-const genAI = new GoogleGenerativeAI(env.GOOGLE_API_KEY!);
-const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
+const client = new GoogleGenAI({
+  apiKey: env.GOOGLE_API_KEY!,
+});
 
 export async function POST(request: NextRequest) {
   try {
@@ -66,14 +67,13 @@ IMPORTANT RULES:
 AVEN KNOWLEDGE:
 ${relevantKnowledge || "No relevant knowledge found."}`;
 
-    const result = await model.generateContent([
-      systemPrompt,
-      message
-    ]);
+    const result = await client.models.generateContent({
+      model: "gemini-2.0-flash-lite",
+      contents: `${systemPrompt}\n\nUser: ${message}`,
+    });
 
     const aiResponse =
-      result.response.text() ||
-      "I apologize, but I couldn't generate a response.";
+      result.text || "I apologize, but I couldn't generate a response.";
 
     console.log("🤖 AI Response:", aiResponse);
 
