@@ -130,6 +130,7 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
             type: "voice",
           };
           setVoiceMessages(prev => [...prev, userMessage]);
+          sendVoiceMessageToBackend(correctedText); // Send to backend after transcription
         }
       } else if (
         message.type === "transcript" &&
@@ -236,7 +237,12 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
         type: "text",
       };
 
-      setTextMessages(prev => [...prev, assistantMessage]);
+      setTextMessages(prev => {
+        if (prev.some(msg => msg.text === assistantMessage.text && msg.sender === "assistant")) {
+          return prev; // Don't add duplicate
+        }
+        return [...prev, assistantMessage];
+      });
     } catch (error) {
       console.error("Error sending message:", error);
       const errorMessage: Message = {
@@ -262,6 +268,44 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
       setVoiceMessages([]);
     } else {
       setTextMessages([]);
+    }
+  };
+
+  const sendVoiceMessageToBackend = async (text: string) => {
+    try {
+      const response = await fetch("/api/chat/text", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text }),
+      });
+      const data = await response.json();
+      const assistantMessage: Message = {
+        id: `assistant_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        text: data.response || "I apologize, but I encountered an error processing your message.",
+        sender: "assistant",
+        timestamp: new Date(),
+        type: "voice",
+      };
+      setVoiceMessages(prev => [...prev, assistantMessage]);
+      // Make the assistant speak the backend's answer using Vapi's send method
+      if (vapi && typeof vapi.send === 'function') {
+        vapi.send({
+          type: 'add-message',
+          message: {
+            role: 'assistant',
+            content: assistantMessage.text,
+          },
+        });
+      }
+    } catch (error) {
+      const errorMessage: Message = {
+        id: `error_voice_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        text: "Sorry, I encountered an error. Please try again.",
+        sender: "assistant",
+        timestamp: new Date(),
+        type: "voice",
+      };
+      setVoiceMessages(prev => [...prev, errorMessage]);
     }
   };
 

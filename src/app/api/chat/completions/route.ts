@@ -35,6 +35,11 @@ export async function POST(req: NextRequest) {
 
     const lastMessage = messages?.[messages.length - 1];
 
+    // Only respond if the last message is from the user
+    if (!lastMessage || lastMessage.role !== "user") {
+      return NextResponse.json({ error: "No user message to respond to." }, { status: 400 });
+    }
+
     const query = lastMessage.content;
 
          const embedding = await embeddings.embedQuery(query);
@@ -45,89 +50,44 @@ export async function POST(req: NextRequest) {
        includeMetadata: true,
     });
 
-    const contextString = response.matches?.map(match => match.metadata?.text).join("\n\n").trim() || "No relevant context found.";
+    // Use only the top match for context
+    const contextString = response.matches?.[0]?.metadata?.text || "";
 
-    const geminiPrompt = `
-You are Aven's helpful customer support assistant.
-ONLY use the information provided in the CONTEXT below to answer the QUESTION.
-If the answer is not in the context, say "I'm sorry, I don't have that information."
-Do not repeat yourself. Do not say you are under development. Only greet the user if they greet you first.
-
-CONTEXT:
-${contextString}
-
-QUESTION:
-${query}
-
-ANSWER:
-`;
-    const prompt = await gemini.chat.completions.create({
-      model: "gemini-2.0-flash-lite",
-      messages: [
-        {
-          role: "user",
-          content: geminiPrompt,
+    // Extract the most relevant sentence from the context
+    function extractMostRelevantSentence(context: string, query: string): string {
+      const sentences = context.split(/(?<=[.!?])\s+/);
+      const queryWords = new Set(query.toLowerCase().split(/\W+/));
+      let bestSentence = "";
+      let bestScore = -1; // allow zero-overlap
+      for (const sentence of sentences) {
+        const sentenceWords = new Set(sentence.toLowerCase().split(/\W+/));
+        const overlap = [...sentenceWords].filter(w => queryWords.has(w)).length;
+        if (overlap > bestScore) {
+          bestScore = overlap;
+          bestSentence = sentence;
         }
-      ],
-      max_tokens: 500,
-      temperature: 0.7,
-    });
-
-    const modifiedMessage = [
-      ...messages.slice(0, messages.length - 1),
-      { ...lastMessage, content: prompt.choices[0].message.content },
-    ];
-
-    if (!Array.isArray(modifiedMessage) || !modifiedMessage.every(m => m.role && m.content)) {
-      return NextResponse.json({ error: "Invalid messages format" }, { status: 400 });
+      }
+      return bestSentence.trim();
     }
+    // Ensure contextString and query are strings
+    const safeContext = typeof contextString === 'string' ? contextString : '';
+    const safeQuery = typeof query === 'string' ? query : '';
+    const relevantContext = extractMostRelevantSentence(safeContext, safeQuery);
 
-    if (stream) {
-      const payload = {
-        model: "gemini-2.0-flash-lite",
-        messages: modifiedMessage,
-        max_tokens: max_tokens || 150,
-        temperature: temperature || 0.7,
-        stream: true,
-      };
-      console.log("Gemini streaming payload:", payload);
-      const completionStream = await gemini.chat.completions.create(payload as OpenAI.Chat.ChatCompletionCreateParamsStreaming);
+    // If Pinecone returned any context, use the best sentence; otherwise, say no info
+    const answer = relevantContext || "I'm sorry, I don't have that information.";
 
-      const encoder = new TextEncoder();
-      const readableStream = new ReadableStream({
-        async start(controller) {
-          try {
-            for await (const chunk of completionStream) {
-              const data = `data: ${JSON.stringify(chunk)}\n\n`;
-              controller.enqueue(encoder.encode(data));
-            }
-          } catch (error) {
-            controller.error(error);
-          } finally {
-            controller.close();
+    // Return the answer directly, skipping LLM generation
+    return NextResponse.json({
+      choices: [
+        {
+          message: {
+            role: "assistant",
+            content: answer,
           }
         }
-      });
-
-      return new Response(readableStream, {
-        headers: {
-          "Content-Type": "text/plain",
-          "Cache-Control": "no-cache",
-          "Connection": "keep-alive",
-        },
-      });
-    } else {
-      const payload = {
-        model: "gemini-2.0-flash-lite",
-        messages: modifiedMessage,
-        max_tokens: max_tokens || 150,
-        temperature: temperature || 0.7,
-        stream: false,
-      };
-      console.log("Gemini non-streaming payload:", payload);
-      const completion = await gemini.chat.completions.create(payload);
-      return NextResponse.json(completion);
-    }
+      ]
+    });
   } catch (e) {
     console.log(e);
     return NextResponse.json({ error: e }, { status: 500 });
