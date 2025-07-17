@@ -2,13 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import {env} from "@/config/env"
 import { Pinecone } from "@pinecone-database/pinecone";
-import {GoogleGenerativeAI} from "@google/generative-ai";
+import {GeminiEmbeddings} from "@/lib/embeddings/gemini-embeddings";
 
 const pinecone = new Pinecone({apiKey: env.PINECONE_API_KEY});
-const namespace = pinecone.index("aven-pinecone-2").namespace("__default__")
+const index = pinecone.index(env.PINECONE_INDEX_NAME);
 
-const ai = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY!)
-const embeddingmodel = ai.getGenerativeModel({model: "gemini-embedding-001"})
+const embeddings = new GeminiEmbeddings();
 
 const gemini = new OpenAI({ apiKey: env.GOOGLE_API_KEY, 
     baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/" });
@@ -38,19 +37,30 @@ export async function POST(req: NextRequest) {
 
     const query = lastMessage.content;
 
-    const embedding = await embeddingmodel.embedContent(query)
+         const embedding = await embeddings.embedQuery(query);
 
-    const response = await namespace.query ({
-       vector: embedding.embedding.values,
+    const response = await index.query ({
+       vector: embedding,
        topK: 3,
        includeMetadata: true,
     });
 
-    const context = response.matches?.map(match => match.metadata?.chunk_text).join("\n\n") || "";
+    const contextString = response.matches?.map(match => match.metadata?.text).join("\n\n").trim() || "No relevant context found.";
 
-    const geminiPrompt =  `Answer the question that's given to you based on the following context: ${context}
-    Question: ${query}
-    answer: `;
+    const geminiPrompt = `
+You are Aven's helpful customer support assistant.
+ONLY use the information provided in the CONTEXT below to answer the QUESTION.
+If the answer is not in the context, say "I'm sorry, I don't have that information."
+Do not repeat yourself. Do not say you are under development. Only greet the user if they greet you first.
+
+CONTEXT:
+${contextString}
+
+QUESTION:
+${query}
+
+ANSWER:
+`;
     const prompt = await gemini.chat.completions.create({
       model: "gemini-2.0-flash-lite",
       messages: [
