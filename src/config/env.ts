@@ -17,6 +17,7 @@ const envSchema = z.object({
   // VAPI (optional for voice)
   VAPI_API_KEY: z.string().optional(),
   VAPI_ASSISTANT_ID: z.string().optional(),
+  GOOGLE_API_KEY: z.string().optional(),
 });
 
 // Function to validate environment variables
@@ -36,6 +37,7 @@ const validateEnv = () => {
       // VAPI
       VAPI_API_KEY: process.env.VAPI_API_KEY,
       VAPI_ASSISTANT_ID: process.env.VAPI_ASSISTANT_ID,
+      GOOGLE_API_KEY: process.env.GOOGLE_API_KEY,
     };
     const parsed = envSchema.parse(env);
     logger.info("Environment variables validated successfully");

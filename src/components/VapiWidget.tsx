@@ -1,6 +1,7 @@
 "use client";
-import React, { useState, useEffect, useRef } from "react";
-import Vapi from "@vapi-ai/web";
+import React, { useState, useEffect, useRef } from 'react';
+import Vapi from '@vapi-ai/web';
+import { Logger } from '@/utils/logger';
 
 interface Message {
   id: string;
@@ -14,6 +15,8 @@ interface VapiWidgetProps {
   apiKey: string;
   assistantId: string;
 }
+
+const logger = new Logger('VapiWidget');
 
 const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
   const [vapi, setVapi] = useState<Vapi | null>(null);
@@ -99,7 +102,7 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
       setIsConnected(true);
     });
 
-    vapiInstance.on("call-end", () => {
+      vapiInstance.on("call-end", () => {
       setIsConnected(false);
       setIsSpeaking(false);
       setTranscription("");
