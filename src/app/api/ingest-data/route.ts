@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Pinecone } from "@pinecone-database/pinecone";
-import { OpenAIEmbeddings } from "@langchain/openai";
+import { GeminiEmbeddings } from "@/lib/embeddings/gemini-embeddings";
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 import { env } from "@/config/env";
 
@@ -8,10 +8,7 @@ const pinecone = new Pinecone({
   apiKey: env.PINECONE_API_KEY,
 });
 
-const embeddings = new OpenAIEmbeddings({
-  openAIApiKey: env.OPENAI_API_KEY,
-  modelName: "text-embedding-3-small",
-});
+const embeddings = new GeminiEmbeddings();
 
 export async function POST(request: NextRequest) {
   try {
