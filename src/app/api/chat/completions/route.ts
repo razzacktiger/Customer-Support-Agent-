@@ -5,7 +5,7 @@ import { Pinecone } from "@pinecone-database/pinecone";
 import {GoogleGenerativeAI} from "@google/generative-ai";
 
 const pinecone = new Pinecone({apiKey: env.PINECONE_API_KEY});
-const namespace = pinecone.index("aven-pinecone-2").namespace("aven")
+const namespace = pinecone.index("aven-pinecone-2").namespace("__default__")
 
 const ai = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY!)
 const embeddingmodel = ai.getGenerativeModel({model: "gemini-embedding-001"})

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Pinecone } from "@pinecone-database/pinecone";
 import { GeminiEmbeddings } from "@/lib/embeddings/gemini-embeddings";
-import { OpenAI } from "openai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { env } from "@/config/env";
 
 // Initialize clients using validated config
@@ -11,9 +11,8 @@ const pinecone = new Pinecone({
 
 const embeddings = new GeminiEmbeddings();
 
-const openai = new OpenAI({
-  apiKey: env.OPENAI_API_KEY,
-});
+const genAI = new GoogleGenerativeAI(env.GOOGLE_API_KEY!);
+const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
 
 export async function POST(request: NextRequest) {
   try {
@@ -67,18 +66,13 @@ IMPORTANT RULES:
 AVEN KNOWLEDGE:
 ${relevantKnowledge || "No relevant knowledge found."}`;
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: message },
-      ],
-      max_tokens: 300, // Keep responses reasonable
-      temperature: 0.3, // More consistent responses
-    });
+    const result = await model.generateContent([
+      systemPrompt,
+      message
+    ]);
 
     const aiResponse =
-      response.choices[0]?.message?.content ||
+      result.response.text() ||
       "I apologize, but I couldn't generate a response.";
 
     console.log("🤖 AI Response:", aiResponse);

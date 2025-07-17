@@ -10,14 +10,13 @@ const envSchema = z.object({
   // API Keys for RAG system
   FIRECRAWL_API_KEY: z.string().min(1, "Firecrawl API key is required"),
   GOOGLE_API_KEY: z.string().min(1, "Google API key is required"),
-  OPENAI_API_KEY: z.string().min(1, "OpenAI API key is required"),
+  OPENAI_API_KEY: z.string().optional(), // Now optional since we're using Gemini
   PINECONE_API_KEY: z.string().min(1, "Pinecone API key is required"),
   PINECONE_INDEX_NAME: z.string().default("aven-support-index"),
   EXA_API_KEY: z.string().min(1, "Exa API key is required"),
   // VAPI (optional for voice)
   VAPI_API_KEY: z.string().optional(),
   VAPI_ASSISTANT_ID: z.string().optional(),
-  GOOGLE_API_KEY: z.string().optional(),
 });
 
 // Function to validate environment variables
@@ -37,7 +36,6 @@ const validateEnv = () => {
       // VAPI
       VAPI_API_KEY: process.env.VAPI_API_KEY,
       VAPI_ASSISTANT_ID: process.env.VAPI_ASSISTANT_ID,
-      GOOGLE_API_KEY: process.env.GOOGLE_API_KEY,
     };
     const parsed = envSchema.parse(env);
     logger.info("Environment variables validated successfully");
