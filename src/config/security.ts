@@ -1,14 +1,9 @@
 // Security configuration and validation utilities
 
 export const validateEnvironment = () => {
-  const requiredServerVars = [
-    'OPENAI_API_KEY',
-  ];
+  const requiredServerVars = ["OPENAI_API_KEY"];
 
-  const requiredClientVars = [
-    'NEXT_PUBLIC_VAPI_API_KEY',
-    'NEXT_PUBLIC_VAPI_ASSISTANT_ID',
-  ];
+  const requiredClientVars = ["VAPI_API_KEY", "VAPI_ASSISTANT_ID"];
 
   const missing: string[] = [];
 
@@ -27,14 +22,16 @@ export const validateEnvironment = () => {
   });
 
   if (missing.length > 0) {
-    throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
+    throw new Error(
+      `Missing required environment variables: ${missing.join(", ")}`
+    );
   }
 };
 
 export const getClientSafeConfig = () => {
   return {
-    vapiApiKey: process.env.NEXT_PUBLIC_VAPI_API_KEY,
-    vapiAssistantId: process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID,
+    vapiApiKey: process.env.VAPI_API_KEY,
+    vapiAssistantId: process.env.VAPI_ASSISTANT_ID,
   };
 };
 
