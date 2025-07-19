@@ -1,7 +1,7 @@
 "use client";
-import React, { useState, useEffect, useRef } from 'react';
-import Vapi from '@vapi-ai/web';
-import { Logger } from '@/utils/logger';
+import React, { useState, useEffect, useRef } from "react";
+import Vapi from "@vapi-ai/web";
+import { Logger } from "@/utils/logger";
 
 interface Message {
   id: string;
@@ -16,7 +16,7 @@ interface VapiWidgetProps {
   assistantId: string;
 }
 
-const logger = new Logger('VapiWidget');
+const logger = new Logger("VapiWidget");
 
 const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
   const [vapi, setVapi] = useState<Vapi | null>(null);
@@ -102,7 +102,7 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
       setIsConnected(true);
     });
 
-      vapiInstance.on("call-end", () => {
+    vapiInstance.on("call-end", () => {
       setIsConnected(false);
       setIsSpeaking(false);
       setTranscription("");
@@ -238,7 +238,12 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
       };
 
       setTextMessages(prev => {
-        if (prev.some(msg => msg.text === assistantMessage.text && msg.sender === "assistant")) {
+        if (
+          prev.some(
+            msg =>
+              msg.text === assistantMessage.text && msg.sender === "assistant"
+          )
+        ) {
           return prev; // Don't add duplicate
         }
         return [...prev, assistantMessage];
@@ -273,7 +278,7 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
 
   const sendVoiceMessageToBackend = async (text: string) => {
     try {
-      const response = await fetch("/api/chat/text", {
+      const response = await fetch("/api/chat/completions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: text }),
@@ -281,18 +286,20 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
       const data = await response.json();
       const assistantMessage: Message = {
         id: `assistant_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        text: data.response || "I apologize, but I encountered an error processing your message.",
+        text:
+          data.response ||
+          "I apologize, but I encountered an error processing your message.",
         sender: "assistant",
         timestamp: new Date(),
         type: "voice",
       };
       setVoiceMessages(prev => [...prev, assistantMessage]);
       // Make the assistant speak the backend's answer using Vapi's send method
-      if (vapi && typeof vapi.send === 'function') {
+      if (vapi && typeof vapi.send === "function") {
         vapi.send({
-          type: 'add-message',
+          type: "add-message",
           message: {
-            role: 'assistant',
+            role: "assistant",
             content: assistantMessage.text,
           },
         });

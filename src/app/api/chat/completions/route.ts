@@ -1,88 +1,137 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
-import {env} from "@/config/env"
+import { env } from "@/config/env";
 import { Pinecone } from "@pinecone-database/pinecone";
-import {GeminiEmbeddings} from "@/lib/embeddings/gemini-embeddings";
+import { GeminiEmbeddings } from "@/lib/embeddings/gemini-embeddings";
 
-const pinecone = new Pinecone({apiKey: env.PINECONE_API_KEY});
+const pinecone = new Pinecone({ apiKey: env.PINECONE_API_KEY });
 const index = pinecone.index(env.PINECONE_INDEX_NAME);
 
 const embeddings = new GeminiEmbeddings();
 
-const gemini = new OpenAI({ apiKey: env.GOOGLE_API_KEY, 
-    baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/" });
+const gemini = new OpenAI({
+  apiKey: env.GOOGLE_API_KEY,
+  baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
+});
 
 export async function POST(req: NextRequest) {
   let body;
   try {
-    body = await NextResponse.json();
+    body = await req.json();
   } catch (e) {
-    return new Response(JSON.stringify({ error: "Invalid or missing JSON in request body" }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" }
-    });
+    return new Response(
+      JSON.stringify({ error: "Invalid or missing JSON in request body" }),
+      {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      }
+    );
   }
+
   try {
-    const {
-      model,
-      messages,
-      max_tokens,
-      temperature,
-      stream,
-      call,
-      ...restParams
-    } = body;
+    const { model, messages, max_tokens, temperature, stream, ...restParams } =
+      body;
 
     const lastMessage = messages?.[messages.length - 1];
     if (!lastMessage) {
-      return NextResponse.json({ error: "No user message provided." }, { status: 400 });
+      return NextResponse.json(
+        { error: "No user message provided." },
+        { status: 400 }
+      );
     }
 
-    // Use Gemini chat completions to modify the prompt
-    const prompt = await gemini.chat.completions.create({
-      model: "gemini-2.0-flash-lite",
-      messages: [
-        {
-          role: "user",
-          content: `\nCreate a prompt which can act as a prompt templete where I put the original prompt and it can modify it according to my intentions so that the final modified prompt is more detailed. You can expand certain terms or keywords.\n----------\nPROMPT: ${lastMessage.content}.\nMODIFIED PROMPT: `,
-        },
-      ],
-      max_tokens: 500,
-      temperature: 0.7,
+    console.log("💬 User question:", lastMessage.content);
+
+    // Step 1: Search Pinecone for relevant Aven knowledge
+    console.log("🔍 Searching knowledge base...");
+
+    // Convert question to embeddings using Gemini
+    const questionEmbedding = await embeddings.embedQuery(lastMessage.content);
+
+    // Search for relevant content in Pinecone
+    const searchResults = await index.query({
+      vector: questionEmbedding,
+      topK: 3, // Get top 3 most relevant pieces
+      includeMetadata: true,
     });
 
-    const modifiedMessage = [
-      ...messages.slice(0, messages.length - 1),
-      { ...lastMessage, content: prompt.choices[0].message.content },
+    // Step 2: Extract relevant knowledge
+    const relevantKnowledge =
+      searchResults.matches
+        ?.filter(match => match.score && match.score > 0.5) // Only good matches
+        ?.map(match => match.metadata?.content)
+        ?.filter(content => content) // Remove empty ones
+        ?.join("\n\n") || "";
+
+    console.log(
+      `✅ Found ${searchResults.matches?.length || 0} knowledge pieces`
+    );
+
+    // Step 3: Create context-aware system prompt
+    const systemPrompt = `You are Aven's helpful customer support assistant. Use the provided knowledge to answer questions accurately and helpfully.
+
+IMPORTANT RULES:
+- Only answer questions about Aven using the provided knowledge
+- If you don't know something, say "I don't have that information" 
+- Be friendly and helpful
+- Keep responses concise but complete
+- If asked about competitors or other companies, redirect to Aven
+
+AVEN KNOWLEDGE:
+${relevantKnowledge || "No relevant knowledge found."}`;
+
+    // Step 4: Create messages with system prompt
+    const messagesWithContext = [
+      { role: "system", content: systemPrompt },
+      ...messages,
     ];
 
     if (stream) {
       const completionStream = await gemini.chat.completions.create({
-        model: model || "gpt-3.5-turbo",
+        model: model || "gemini-2.0-flash-lite",
         ...restParams,
-        messages: modifiedMessage,
+        messages: messagesWithContext,
         max_tokens: max_tokens || 150,
         temperature: temperature || 0.7,
         stream: true,
       } as OpenAI.Chat.ChatCompletionCreateParamsStreaming);
 
-      for await (const data of completionStream) {
-        NextResponse.write(`data: ${JSON.stringify(data)}\n\n`);
-      }
-      NextResponse.end();
+      const encoder = new TextEncoder();
+      const readable = new ReadableStream({
+        async start(controller) {
+          for await (const data of completionStream) {
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify(data)}\n\n`)
+            );
+          }
+          controller.close();
+        },
+      });
+
+      return new Response(readable, {
+        headers: {
+          "Content-Type": "text/plain; charset=utf-8",
+        },
+      });
     } else {
       const completion = await gemini.chat.completions.create({
-        model: model || "gemini-1.5-flash-latest",
+        model: model || "gemini-2.0-flash-lite",
         ...restParams,
-        messages: modifiedMessage,
+        messages: messagesWithContext,
         max_tokens: max_tokens || 150,
         temperature: temperature || 0.7,
         stream: false,
       });
+
+      console.log("🤖 AI Response:", completion.choices[0]?.message?.content);
+
       return NextResponse.json(completion, { status: 200 });
     }
   } catch (e) {
-    console.log(e);
-    return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 });
+    console.error("❌ Chat completions error:", e);
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : String(e) },
+      { status: 500 }
+    );
   }
 }
