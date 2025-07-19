@@ -15,7 +15,7 @@ const gemini = new OpenAI({ apiKey: env.GOOGLE_API_KEY,
 export async function POST(req: NextRequest) {
   let body;
   try {
-    body = await req.json();
+    body = await NextResponse.json();
   } catch (e) {
     return new Response(JSON.stringify({ error: "Invalid or missing JSON in request body" }), {
       status: 400,
@@ -34,62 +34,55 @@ export async function POST(req: NextRequest) {
     } = body;
 
     const lastMessage = messages?.[messages.length - 1];
-
-    // Only respond if the last message is from the user
-    if (!lastMessage || lastMessage.role !== "user") {
-      return NextResponse.json({ error: "No user message to respond to." }, { status: 400 });
+    if (!lastMessage) {
+      return NextResponse.json({ error: "No user message provided." }, { status: 400 });
     }
 
-    const query = lastMessage.content;
-
-         const embedding = await embeddings.embedQuery(query);
-
-    const response = await index.query ({
-       vector: embedding,
-       topK: 3,
-       includeMetadata: true,
-    });
-
-    // Use only the top match for context
-    const contextString = response.matches?.[0]?.metadata?.text || "";
-
-    // Extract the most relevant sentence from the context
-    function extractMostRelevantSentence(context: string, query: string): string {
-      const sentences = context.split(/(?<=[.!?])\s+/);
-      const queryWords = new Set(query.toLowerCase().split(/\W+/));
-      let bestSentence = "";
-      let bestScore = -1; // allow zero-overlap
-      for (const sentence of sentences) {
-        const sentenceWords = new Set(sentence.toLowerCase().split(/\W+/));
-        const overlap = [...sentenceWords].filter(w => queryWords.has(w)).length;
-        if (overlap > bestScore) {
-          bestScore = overlap;
-          bestSentence = sentence;
-        }
-      }
-      return bestSentence.trim();
-    }
-    // Ensure contextString and query are strings
-    const safeContext = typeof contextString === 'string' ? contextString : '';
-    const safeQuery = typeof query === 'string' ? query : '';
-    const relevantContext = extractMostRelevantSentence(safeContext, safeQuery);
-
-    // If Pinecone returned any context, use the best sentence; otherwise, say no info
-    const answer = relevantContext || "I'm sorry, I don't have that information.";
-
-    // Return the answer directly, skipping LLM generation
-    return NextResponse.json({
-      choices: [
+    // Use Gemini chat completions to modify the prompt
+    const prompt = await gemini.chat.completions.create({
+      model: "gemini-2.0-flash-lite",
+      messages: [
         {
-          message: {
-            role: "assistant",
-            content: answer,
-          }
-        }
-      ]
+          role: "user",
+          content: `\nCreate a prompt which can act as a prompt templete where I put the original prompt and it can modify it according to my intentions so that the final modified prompt is more detailed. You can expand certain terms or keywords.\n----------\nPROMPT: ${lastMessage.content}.\nMODIFIED PROMPT: `,
+        },
+      ],
+      max_tokens: 500,
+      temperature: 0.7,
     });
+
+    const modifiedMessage = [
+      ...messages.slice(0, messages.length - 1),
+      { ...lastMessage, content: prompt.choices[0].message.content },
+    ];
+
+    if (stream) {
+      const completionStream = await gemini.chat.completions.create({
+        model: model || "gpt-3.5-turbo",
+        ...restParams,
+        messages: modifiedMessage,
+        max_tokens: max_tokens || 150,
+        temperature: temperature || 0.7,
+        stream: true,
+      } as OpenAI.Chat.ChatCompletionCreateParamsStreaming);
+
+      for await (const data of completionStream) {
+        NextResponse.write(`data: ${JSON.stringify(data)}\n\n`);
+      }
+      NextResponse.end();
+    } else {
+      const completion = await gemini.chat.completions.create({
+        model: model || "gemini-1.5-flash-latest",
+        ...restParams,
+        messages: modifiedMessage,
+        max_tokens: max_tokens || 150,
+        temperature: temperature || 0.7,
+        stream: false,
+      });
+      return NextResponse.json(completion, { status: 200 });
+    }
   } catch (e) {
     console.log(e);
-    return NextResponse.json({ error: e }, { status: 500 });
+    return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 });
   }
 }
