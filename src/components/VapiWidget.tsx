@@ -82,16 +82,29 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
     // Check audio support on component mount
     setAudioSupported(checkAudioSupport());
 
-    // Filter out audio processor warnings
+    // Filter out audio processor warnings and transport errors
     const originalConsoleWarn = console.warn;
+    const originalConsoleError = console.error;
+
     console.warn = (...args) => {
       const message = args.join(" ");
       if (
         !message.includes("audio processor") &&
         !message.includes("Ignoring settings for browser") &&
-        !message.includes("platform-unsupported input processor")
+        !message.includes("platform-unsupported input processor") &&
+        !message.includes("recv transport changed")
       ) {
         originalConsoleWarn.apply(console, args);
+      }
+    };
+
+    console.error = (...args) => {
+      const message = args.join(" ");
+      if (
+        !message.includes("recv transport changed") &&
+        !message.includes("transport changed to disconnected")
+      ) {
+        originalConsoleError.apply(console, args);
       }
     };
 
@@ -165,8 +178,9 @@ const VapiWidget: React.FC<VapiWidgetProps> = ({ apiKey, assistantId }) => {
 
     return () => {
       vapiInstance?.stop();
-      // Restore original console.warn
+      // Restore original console methods
       console.warn = originalConsoleWarn;
+      console.error = originalConsoleError;
     };
   }, [apiKey]);
 

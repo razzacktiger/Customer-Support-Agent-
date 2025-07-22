@@ -78,6 +78,8 @@ GOOGLE_API_KEY=your_google_generative_ai_key_here
 2. Create an account and get your API key
 3. Add it to your `.env` as `PINECONE_API_KEY`
 
+### Firecrawl (Scraping )
+
 #### Optional: Exa
 - [Exa](https://exa.ai) - Web search capabilities
 
